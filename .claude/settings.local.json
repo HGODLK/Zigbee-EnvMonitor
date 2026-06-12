@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"D:\\\\2026xiaoxueqi\\\\260608\\\\ProJect\" -Depth 1)",
+      "Bash(Format-Table Name, Mode, LastWriteTime -AutoSize)",
+      "Bash(gh auth *)"
+    ]
+  }
+}

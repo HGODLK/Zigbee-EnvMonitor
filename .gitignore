@@ -1,0 +1,59 @@
+# ========== Python ==========
+__pycache__/
+*.pyc
+*.pyo
+
+# ========== IAR Embedded Workbench ==========
+*.dep
+*.ewt
+*.ewd.bak
+*Backup*
+Debug/
+Release/
+Obj/
+List/
+*.sim
+*.dbgdt
+# 保留 Exe/*.hex（预编译固件），忽略 .d51 调试符号
+Exe/*.d51
+
+# ========== Qt / CMake build ==========
+build/
+*.user
+*.pro.user*
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+
+# ========== 大文件 / 压缩包 ==========
+*.zip
+*.rar
+*.7z
+*.tar.gz
+
+# ========== 与本项目无关的目录 ==========
+EMP（与本项目无关）/
+
+# ========== 废弃代码 ==========
+9.手机APP及源码（废弃）/
+
+# ========== 其他小组提交成果 ==========
+第4组/
+第4组.zip
+第8组成果物.zip
+
+# ========== 数据文件 ==========
+web/data/
+sjk/web/data/
+sjk/upper_computer/deploy/
+
+# ========== CSV 数据日志 ==========
+*.csv
+!upper_computer/deploy/EnvMonitor.exe
+
+# ========== OS 文件 ==========
+Thumbs.db
+.DS_Store
+*.swp
+*.swo
+*~

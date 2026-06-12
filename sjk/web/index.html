@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>环境数据采集系统</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+    --sub: #94a3b8;
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --yellow: #eab308;
+    --orange: #f97316;
+    --cyan: #06b6d4;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    padding: 20px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  button, input, select { font: inherit; }
+  .app { width: 100%; max-width: 1100px; margin: 0 auto; }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .header h1 { font-size: 24px; font-weight: 650; }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    background: var(--card);
+    color: var(--sub);
+    font-size: 13px;
+  }
+  .status .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--red);
+  }
+  .status.ok .dot { background: var(--green); animation: pulse 2s infinite; }
+  .status.busy .dot { background: var(--yellow); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  .nav {
+    display: flex;
+    gap: 6px;
+    padding: 5px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card);
+  }
+  .nav-button {
+    padding: 9px 18px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--sub);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .nav-button.active { background: var(--blue); color: #fff; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .connect-panel {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .connect-panel input {
+    flex: 1;
+    min-width: 220px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    outline: none;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .card { padding: 20px; text-align: center; }
+  .card-label { color: var(--sub); font-size: 13px; }
+  .card-value {
+    margin: 7px 0;
+    font-size: clamp(38px, 6vw, 54px);
+    font-weight: 700;
+    line-height: 1.15;
+  }
+  .card-unit { color: var(--sub); font-size: 15px; }
+  .card.temp .card-value { color: var(--orange); }
+  .card.humi .card-value { color: var(--cyan); }
+  .card.light .card-value { color: var(--yellow); }
+  .chart-panel { padding: 18px; margin-bottom: 16px; }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .panel-header h2 { font-size: 17px; font-weight: 600; }
+  .chart-actions { display: flex; gap: 8px; }
+  .btn {
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 7px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-primary { background: var(--blue); }
+  .btn-secondary { background: #475569; }
+  .legend {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+    color: var(--sub);
+    font-size: 12px;
+  }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .legend i { width: 18px; height: 3px; border-radius: 2px; }
+  .chart-wrap { position: relative; height: 460px; }
+  #sensorChart { display: block; width: 100%; height: 100%; }
+  .chart-empty {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: var(--sub);
+    font-size: 14px;
+    pointer-events: none;
+  }
+  .chart-empty.hidden { display: none; }
+
+  .history-toolbar {
+    display: flex;
+    align-items: end;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .field {
+    display: grid;
+    gap: 5px;
+    color: var(--sub);
+    font-size: 12px;
+  }
+  .field input, .field select {
+    min-height: 36px;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    outline: none;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .history-summary {
+    flex: 1;
+    min-width: 210px;
+    padding-bottom: 9px;
+    color: var(--sub);
+    font-size: 12px;
+    text-align: right;
+  }
+  .timeline-panel { padding: 20px; }
+  .timeline {
+    position: relative;
+    max-width: 850px;
+    margin: 0 auto;
+    padding-left: 34px;
+  }
+  .timeline::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    left: 9px;
+    width: 2px;
+    background: var(--border);
+  }
+  .timeline-item {
+    position: relative;
+    padding: 0 0 14px 12px;
+  }
+  .timeline-dot {
+    position: absolute;
+    top: 15px;
+    left: -32px;
+    width: 14px;
+    height: 14px;
+    border: 3px solid var(--card);
+    border-radius: 50%;
+    background: var(--blue);
+    box-shadow: 0 0 0 2px var(--border);
+  }
+  .timeline-card {
+    display: grid;
+    grid-template-columns: minmax(150px, 1.3fr) repeat(3, minmax(90px, 1fr));
+    gap: 14px;
+    align-items: center;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: rgba(15, 23, 42, .7);
+  }
+  .timeline-time { color: var(--text); font-size: 13px; font-weight: 600; }
+  .timeline-date { display: block; margin-top: 3px; color: var(--sub); font-size: 11px; }
+  .metric { font-size: 13px; }
+  .metric strong { display: block; margin-top: 3px; font-size: 18px; }
+  .metric.temp strong { color: var(--orange); }
+  .metric.humi strong { color: var(--cyan); }
+  .metric.light strong { color: var(--yellow); }
+  .timeline-empty {
+    padding: 70px 20px;
+    color: var(--sub);
+    text-align: center;
+  }
+  .load-more { display: block; margin: 10px auto 0; }
+  .log-area { margin-bottom: 16px; }
+  .log-area h3 { margin-bottom: 8px; color: var(--sub); font-size: 13px; }
+  .log-box {
+    height: 130px;
+    overflow-y: auto;
+    padding: 11px 13px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--card);
+    color: var(--sub);
+    font: 12px/1.6 Consolas, monospace;
+    white-space: pre-wrap;
+  }
+
+  @media (max-width: 700px) {
+    body { padding: 14px; }
+    .chart-wrap { height: 330px; }
+    .cards { grid-template-columns: 1fr; }
+    .connect-panel .btn { flex: 1; }
+    .history-summary { flex-basis: 100%; text-align: left; }
+    .timeline-card { grid-template-columns: 1fr 1fr; }
+    .timeline-time { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="header">
+    <h1>🌿 环境数据采集系统</h1>
+    <div class="status" id="statusBadge">
+      <span class="dot"></span>
+      <span id="statusText">未连接</span>
+    </div>
+  </header>
+
+  <nav class="nav" aria-label="主导航">
+    <button class="nav-button active" data-view="live">实时监控</button>
+    <button class="nav-button" data-view="history">历史记录</button>
+  </nav>
+
+  <section class="view active" id="liveView">
+    <div class="connect-panel panel">
+      <input type="text" id="ipInput" inputmode="decimal" value="127.0.0.1"
+             placeholder="Qt 上位机 IP 地址（本机为 127.0.0.1）">
+      <button class="btn btn-primary" id="btnScan">搜索 Qt 服务</button>
+      <button class="btn" style="background:var(--green)" id="btnConnect">连接 Qt</button>
+      <button class="btn" style="background:var(--red)" id="btnDisconnect" disabled>断开 Qt</button>
+    </div>
+
+    <div class="cards">
+      <article class="card panel temp">
+        <div class="card-label">🌡️ 温度</div>
+        <div class="card-value" id="valTemp">--</div>
+        <div class="card-unit">°C</div>
+      </article>
+      <article class="card panel humi">
+        <div class="card-label">💧 湿度</div>
+        <div class="card-value" id="valHumi">--</div>
+        <div class="card-unit">%RH</div>
+      </article>
+      <article class="card panel light">
+        <div class="card-label">☀️ 光照</div>
+        <div class="card-value" id="valLight">--</div>
+        <div class="card-unit">%</div>
+      </article>
+    </div>
+
+    <div class="chart-panel panel">
+      <div class="panel-header">
+        <h2>实时传感器曲线</h2>
+        <div class="chart-actions">
+          <button class="btn btn-secondary" id="btnPause">暂停</button>
+          <button class="btn btn-secondary" id="btnClear">清空</button>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i style="background:#f97316"></i>温度 °C（左轴）</span>
+        <span><i style="background:#06b6d4"></i>湿度 %RH（右轴）</span>
+        <span><i style="background:#eab308"></i>光照 %（右轴）</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="sensorChart"></canvas>
+        <div class="chart-empty" id="chartEmpty">等待传感器数据...</div>
+      </div>
+    </div>
+
+    <div class="log-area">
+      <h3>📋 运行日志</h3>
+      <div class="log-box" id="logBox"></div>
+    </div>
+  </section>
+
+  <section class="view" id="historyView">
+    <div class="history-toolbar panel">
+      <label class="field">
+        开始时间
+        <input type="datetime-local" id="historyStart" step="1">
+      </label>
+      <label class="field">
+        结束时间
+        <input type="datetime-local" id="historyEnd" step="1">
+      </label>
+      <label class="field">
+        快捷范围
+        <select id="historyPreset">
+          <option value="1">最近 1 小时</option>
+          <option value="6">最近 6 小时</option>
+          <option value="24">最近 24 小时</option>
+          <option value="168">最近 7 天</option>
+        </select>
+      </label>
+      <button class="btn btn-primary" id="btnLoadHistory">查询</button>
+      <span class="history-summary" id="historySummary">请选择时间范围查询历史记录</span>
+    </div>
+
+    <div class="timeline-panel panel">
+      <div class="timeline" id="historyTimeline"></div>
+      <button class="btn btn-secondary load-more" id="btnLoadMore" hidden>加载更多</button>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const statusBadge = $('statusBadge');
+const statusText = $('statusText');
+const ipInput = $('ipInput');
+const btnScan = $('btnScan');
+const btnConnect = $('btnConnect');
+const btnDisconnect = $('btnDisconnect');
+const btnPause = $('btnPause');
+const btnClear = $('btnClear');
+const logBox = $('logBox');
+const chart = $('sensorChart');
+const chartEmpty = $('chartEmpty');
+const historyStart = $('historyStart');
+const historyEnd = $('historyEnd');
+const historyPreset = $('historyPreset');
+const btnLoadHistory = $('btnLoadHistory');
+const historySummary = $('historySummary');
+const historyTimeline = $('historyTimeline');
+const btnLoadMore = $('btnLoadMore');
+
+const MAX_POINTS = 60;
+const TIMELINE_PAGE_SIZE = 100;
+const chartData = [];
+let historyRecords = [];
+let timelineVisibleCount = TIMELINE_PAGE_SIZE;
+let evtSource = null;
+let paused = false;
+let logLines = [];
+let lastStateKey = '';
+
+function addLog(message) {
+  const time = new Date().toLocaleTimeString();
+  logLines.push(`[${time}] ${message}`);
+  if (logLines.length > 200) logLines.shift();
+  logBox.textContent = logLines.join('\n');
+  logBox.scrollTop = logBox.scrollHeight;
+}
+
+function setStatus(state) {
+  const busy = state.connecting || state.scanning;
+  statusBadge.className = `status${state.connected ? ' ok' : busy ? ' busy' : ''}`;
+  statusText.textContent = state.status || (state.connected ? '已连接' : '未连接');
+  btnScan.disabled = Boolean(state.scanning);
+  btnScan.textContent = state.scanning ? '搜索中...' : '搜索 Qt 服务';
+  btnConnect.disabled = Boolean(state.connecting);
+  btnConnect.textContent = state.connecting ? '连接中...' : '连接 Qt';
+  btnDisconnect.disabled = !(state.hub_connected || state.connecting || state.scanning);
+  if (state.hub_host) ipInput.value = state.hub_host;
+
+  const key = [state.connected, state.connecting, state.scanning, state.status, state.error].join('|');
+  if (key !== lastStateKey) {
+    addLog(state.error ? `✗ ${state.status}: ${state.error}` : state.status);
+    lastStateKey = key;
+  }
+}
+
+function applySensor(data) {
+  if (data.temp !== null && data.temp !== undefined) {
+    $('valTemp').textContent = formatMetric(data.temp);
+  }
+  if (data.humi !== null && data.humi !== undefined) {
+    $('valHumi').textContent = formatMetric(data.humi);
+  }
+  if (data.light !== null && data.light !== undefined) {
+    $('valLight').textContent = formatMetric(data.light, 0);
+  }
+  if (paused) return;
+  const point = {
+    time: new Date(data.timestamp || Date.now()),
+    temp: Number(data.temp),
+    humi: Number(data.humi),
+    light: Number(data.light)
+  };
+  if (![point.temp, point.humi, point.light].some(Number.isFinite)) return;
+  chartData.push(point);
+  if (chartData.length > MAX_POINTS) chartData.shift();
+  drawChart();
+}
+
+function connectSSE() {
+  if (evtSource) evtSource.close();
+  evtSource = new EventSource('/data');
+  evtSource.addEventListener('status', event => setStatus(JSON.parse(event.data)));
+  evtSource.addEventListener('data', event => applySensor(JSON.parse(event.data)));
+  evtSource.onopen = () => addLog('Web 实时通道已连接');
+  evtSource.onerror = () => {
+    statusBadge.className = 'status busy';
+    statusText.textContent = 'Web 通道重连中';
+  };
+}
+
+async function requestJson(url) {
+  const response = await fetch(url);
+  const data = await response.json();
+  if (!response.ok || data.ok === false) {
+    throw new Error(data.error || `请求失败 (${response.status})`);
+  }
+  return data;
+}
+
+async function doScan() {
+  btnScan.disabled = true;
+  addLog('开始搜索 Qt 数据服务');
+  try {
+    const data = await requestJson('/api/auto_connect');
+    if (data.message) addLog(data.message);
+  } catch (error) {
+    addLog(`✗ 搜索失败: ${error.message}`);
+    btnScan.disabled = false;
+  }
+}
+
+async function doConnect() {
+  const host = ipInput.value.trim();
+  if (!host) {
+    addLog('请输入 Qt 上位机 IP 地址');
+    ipInput.focus();
+    return;
+  }
+  btnConnect.disabled = true;
+  addLog(`请求连接 Qt 数据服务 ${host}:25577`);
+  try {
+    await requestJson(`/api/connect?host=${encodeURIComponent(host)}`);
+  } catch (error) {
+    addLog(`✗ 连接失败: ${error.message}`);
+    btnConnect.disabled = false;
+  }
+}
+
+async function doDisconnect() {
+  btnDisconnect.disabled = true;
+  try {
+    await requestJson('/api/disconnect');
+    addLog('已断开 Qt 数据服务');
+  } catch (error) {
+    addLog(`✗ 断开失败: ${error.message}`);
+    btnDisconnect.disabled = false;
+  }
+}
+
+function niceTemperatureRange(values) {
+  if (!values.length) return [0, 50];
+  let min = Math.min(...values);
+  let max = Math.max(...values);
+  if (min === max) { min -= 5; max += 5; }
+  const padding = Math.max(2, (max - min) * .2);
+  return [Math.floor(min - padding), Math.ceil(max + padding)];
+}
+
+function drawChart() {
+  const rect = chart.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const dpr = window.devicePixelRatio || 1;
+  chart.width = Math.round(rect.width * dpr);
+  chart.height = Math.round(rect.height * dpr);
+  const ctx = chart.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const width = rect.width;
+  const height = rect.height;
+  const pad = { left: 48, right: 46, top: 12, bottom: 30 };
+  const plotWidth = width - pad.left - pad.right;
+  const plotHeight = height - pad.top - pad.bottom;
+  ctx.clearRect(0, 0, width, height);
+
+  const temps = chartData.map(point => point.temp).filter(Number.isFinite);
+  const [tempMin, tempMax] = niceTemperatureRange(temps);
+  ctx.lineWidth = 1;
+  ctx.font = '11px Segoe UI';
+  ctx.fillStyle = '#94a3b8';
+  ctx.strokeStyle = '#334155';
+
+  for (let index = 0; index <= 5; index++) {
+    const y = pad.top + plotHeight * index / 5;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(width - pad.right, y);
+    ctx.stroke();
+    ctx.textAlign = 'right';
+    ctx.fillText((tempMax - (tempMax - tempMin) * index / 5).toFixed(0), pad.left - 8, y + 4);
+    ctx.textAlign = 'left';
+    ctx.fillText(String(100 - 20 * index), width - pad.right + 8, y + 4);
+  }
+
+  if (!chartData.length) {
+    chartEmpty.classList.remove('hidden');
+    return;
+  }
+  chartEmpty.classList.add('hidden');
+
+  const xAt = index => chartData.length === 1
+    ? pad.left + plotWidth / 2
+    : pad.left + plotWidth * index / (chartData.length - 1);
+  const tempY = value => pad.top + plotHeight * (tempMax - value) / (tempMax - tempMin);
+  const percentY = value => pad.top + plotHeight * (100 - Math.max(0, Math.min(100, value))) / 100;
+
+  function drawLine(key, color, yAt) {
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    let started = false;
+    chartData.forEach((point, index) => {
+      const value = point[key];
+      if (!Number.isFinite(value)) { started = false; return; }
+      const x = xAt(index);
+      const y = yAt(value);
+      if (started) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+      started = true;
+    });
+    ctx.stroke();
+  }
+
+  drawLine('temp', '#f97316', tempY);
+  drawLine('humi', '#06b6d4', percentY);
+  drawLine('light', '#eab308', percentY);
+
+  const labels = [...new Set([0, Math.floor((chartData.length - 1) / 2), chartData.length - 1])];
+  ctx.fillStyle = '#94a3b8';
+  labels.forEach(index => {
+    ctx.textAlign = index === 0 ? 'left' : index === chartData.length - 1 ? 'right' : 'center';
+    ctx.fillText(
+      chartData[index].time.toLocaleTimeString([], { hour12: false }),
+      xAt(index),
+      height - 8
+    );
+  });
+}
+
+function toLocalInputValue(date) {
+  const pad = value => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+function setHistoryRange(hours) {
+  const end = new Date();
+  const start = new Date(end.getTime() - Number(hours) * 3600000);
+  historyStart.value = toLocalInputValue(start);
+  historyEnd.value = toLocalInputValue(end);
+}
+
+function formatMetric(value, digits = 1) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(digits) : '--';
+}
+
+function renderTimeline() {
+  if (!historyRecords.length) {
+    historyTimeline.innerHTML = '<div class="timeline-empty">该时间范围内没有历史数据</div>';
+    btnLoadMore.hidden = true;
+    return;
+  }
+
+  const visible = historyRecords.slice(0, timelineVisibleCount);
+  historyTimeline.innerHTML = visible.map(record => {
+    const time = new Date(record.timestamp);
+    return `
+      <article class="timeline-item">
+        <span class="timeline-dot"></span>
+        <div class="timeline-card">
+          <div class="timeline-time">
+            ${time.toLocaleTimeString([], { hour12: false })}
+            <span class="timeline-date">${time.toLocaleDateString()}</span>
+          </div>
+          <div class="metric temp">温度<strong>${formatMetric(record.temp)} °C</strong></div>
+          <div class="metric humi">湿度<strong>${formatMetric(record.humi)} %RH</strong></div>
+          <div class="metric light">光照<strong>${formatMetric(record.light, 0)} %</strong></div>
+        </div>
+      </article>`;
+  }).join('');
+  btnLoadMore.hidden = timelineVisibleCount >= historyRecords.length;
+}
+
+async function loadHistory() {
+  const start = new Date(historyStart.value).getTime();
+  const end = new Date(historyEnd.value).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end) {
+    historySummary.textContent = '请选择有效的开始和结束时间';
+    return;
+  }
+
+  btnLoadHistory.disabled = true;
+  btnLoadHistory.textContent = '查询中...';
+  try {
+    const data = await requestJson(`/api/history?start=${start}&end=${end}&limit=5000`);
+    historyRecords = data.records.slice().reverse();
+    timelineVisibleCount = TIMELINE_PAGE_SIZE;
+    const sampled = data.downsampled ? '，记录较多，已自动聚合' : '';
+    historySummary.textContent = `共 ${data.total} 条，展示 ${data.returned} 条${sampled}`;
+    renderTimeline();
+    addLog(`历史查询完成：${data.returned} 条`);
+  } catch (error) {
+    historyRecords = [];
+    historySummary.textContent = `查询失败：${error.message}`;
+    renderTimeline();
+  } finally {
+    btnLoadHistory.disabled = false;
+    btnLoadHistory.textContent = '查询';
+  }
+}
+
+document.querySelectorAll('.nav-button').forEach(button => {
+  button.addEventListener('click', () => {
+    document.querySelectorAll('.nav-button').forEach(item => item.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
+    button.classList.add('active');
+    $(`${button.dataset.view}View`).classList.add('active');
+    if (button.dataset.view === 'live') drawChart();
+    if (button.dataset.view === 'history' && !historyRecords.length) loadHistory();
+  });
+});
+
+btnScan.addEventListener('click', doScan);
+btnConnect.addEventListener('click', doConnect);
+btnDisconnect.addEventListener('click', doDisconnect);
+ipInput.addEventListener('keydown', event => {
+  if (event.key === 'Enter') doConnect();
+});
+btnPause.addEventListener('click', () => {
+  paused = !paused;
+  btnPause.textContent = paused ? '继续' : '暂停';
+  addLog(paused ? '实时曲线已暂停' : '实时曲线已继续');
+});
+btnClear.addEventListener('click', () => {
+  chartData.length = 0;
+  drawChart();
+  addLog('实时曲线已清空');
+});
+btnLoadHistory.addEventListener('click', loadHistory);
+historyPreset.addEventListener('change', () => setHistoryRange(historyPreset.value));
+btnLoadMore.addEventListener('click', () => {
+  timelineVisibleCount += TIMELINE_PAGE_SIZE;
+  renderTimeline();
+});
+window.addEventListener('resize', drawChart);
+
+setHistoryRange(historyPreset.value);
+drawChart();
+connectSSE();
+addLog('环境数据采集系统启动');
+fetch('/api/status')
+  .then(response => response.json())
+  .then(state => {
+    setStatus(state);
+    if (state.sensor) applySensor(state.sensor);
+  })
+  .catch(error => addLog(`✗ 状态读取失败: ${error.message}`));
+fetch('/api/history/stats')
+  .then(response => response.json())
+  .then(data => {
+    if (data.count) addLog(`SQLite 已存储 ${data.count} 条历史记录`);
+  })
+  .catch(() => {});
+</script>
+</body>
+</html>
