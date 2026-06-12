@@ -49,19 +49,12 @@
 
 ### 烧录
 
-使用 SmartRF Flash Programmer 命令行工具（**每次烧录前必须先刷 EB 固件**）：
+使用 SmartRF Flash Programmer 命令行工具烧录：
 
 ```powershell
 $flashCli = "C:\Program Files (x86)\Texas Instruments\SmartRF Tools\Flash Programmer\bin\SmartRFProgConsole.exe"
-$fwPath = "C:\Program Files (x86)\Texas Instruments\SmartRF Tools\Firmware\SmartRF04EB\fw0400.hex"
-
-# 步骤1: 刷 EB 固件（必须，否则 USB STALL）
-& $flashCli AU EPV F=$fwPath
-# 步骤2: 烧录 CC2530
-& $flashCli S EPV F="Projects/.../Coordinator.hex"
+& $flashCli S EPV F="Projects/zstack/Utilities/SerialApp/CC2530DB/CoordinatorEB-Pro/Exe/Coordinator.hex"
 ```
-
-> 不要用 IAR Ctrl+D 下载 — IAR 的 Chipcon 驱动会损坏 EB 固件。
 
 ### 三块板部署
 
